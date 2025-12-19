@@ -1,6 +1,6 @@
 #ifndef PLAY_HPP
 #define PLAY_HPP
-#include "card2.hpp"
+#include "card3_1.hpp"
 // #include "server1_3.hpp"
 
 using namespace std::chrono_literals;
@@ -100,28 +100,29 @@ public:
                             // 注意：这里删除卡牌后，后续访问会出问题
                             // 需要从 cur_player_slots_cards 中移除
 
-                            auto& player_cards = player_cards_[cur_player_id];
-                            for (auto it = player_cards.begin(); it != player_cards.end(); ){
-                                if (cur_card == *it){
-                                    it = player_cards.erase(it);
-                                    cur_player_bones+=1;
-                                    //骨头🦴+=1
-                                    break;
-                                }
-                                else{
-                                    ++it;
-                                }
-                            }
-                            for(auto &slot_cards : cur_player_slots_cards[cur_player_id]){
-                                for(auto it = slot_cards.begin();it != slot_cards.end();){
-                                    if (cur_card == *it){
-                                        it = slot_cards.erase(it);
-                                    }
-                                    else{
-                                        ++it;
-                                    }
-                                }
-                            }
+                            // auto& player_cards = player_cards_[cur_player_id];
+                            // for (auto it = player_cards.begin(); it != player_cards.end(); ){
+                            //     if (cur_card == *it){
+                            //         it = player_cards.erase(it);
+                            //         cur_player_bones+=1;
+                            //         //骨头🦴+=1
+                            //         break;
+                            //     }
+                            //     else{
+                            //         ++it;
+                            //     }
+                            // }
+                            // for(auto &slot_cards : cur_player_slots_cards[cur_player_id]){
+                            //     for(auto it = slot_cards.begin();it != slot_cards.end();){
+                            //         if (cur_card == *it){
+                            //             it = slot_cards.erase(it);
+                            //         }
+                            //         else{
+                            //             ++it;
+                            //         }
+                            //     }
+                            // }
+
                             // delete cur_card;
                             // cur_player_slots_cards[cur_player_id][i].clear();
                         }
@@ -158,29 +159,29 @@ public:
                                 }
                             }
                             // 卡牌死亡
-                            auto& player_cards = player_cards_[op_player_id];
-                            for (auto it = player_cards.begin(); it != player_cards.end(); ){
-                                if (op_card == *it){
-                                    it = player_cards.erase(it);
-                                    //骨头🦴+=1
-                                    last_player_bones+=1;
-                                    break;
-                                }
-                                else{
-                                    ++it;
-                                }
-                            }
-                            for(auto &slot_cards : last_slots_cards[op_player_id]){
-                                for(auto it = slot_cards.begin();it != slot_cards.end();){
-                                    if (op_card == *it){
-                                        it = slot_cards.erase(it);
-                                        break;
-                                    }
-                                    else{
-                                        ++it;
-                                    }
-                                }
-                            }
+                            // auto& player_cards = player_cards_[op_player_id];
+                            // for (auto it = player_cards.begin(); it != player_cards.end(); ){
+                            //     if (op_card == *it){
+                            //         it = player_cards.erase(it);
+                            //         //骨头🦴+=1
+                            //         last_player_bones+=1;
+                            //         break;
+                            //     }
+                            //     else{
+                            //         ++it;
+                            //     }
+                            // }
+                            // for(auto &slot_cards : last_slots_cards[op_player_id]){
+                            //     for(auto it = slot_cards.begin();it != slot_cards.end();){
+                            //         if (op_card == *it){
+                            //             it = slot_cards.erase(it);
+                            //             break;
+                            //         }
+                            //         else{
+                            //             ++it;
+                            //         }
+                            //     }
+                            // }
                            
                         }
                     }
