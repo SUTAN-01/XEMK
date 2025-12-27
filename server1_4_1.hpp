@@ -313,6 +313,8 @@ private:
                         int player_card_id = (*it)->get_play_current_card_id();
                         if (player_card_id == card_id) {
                             auto costit=(*it)->getcost().begin();
+                            std::string cost_name=costit->first;
+                            int cost_num=costit->second;
                             if(costit->first=="血滴"){
                                 if(slots_cards.size()>=costit->second){
                                     //可以出牌
@@ -716,10 +718,11 @@ private:
                 for(auto &card : cards) {
                     if(card && card->get_card_state()==1) {
                         card_info.push_back(card->toJson());
-                    } else {
-                        CardRandomizer skipcard;
-                        card_info.push_back(skipcard.getskip("鸽子")->toJson());
-                    }
+                    } 
+                    // else {
+                    //     CardRandomizer skipcard;
+                    //     card_info.push_back(skipcard.getskip("鸽子")->toJson());
+                    // }
                 }
             } else {
                 // 栏位为空，添加一个null表示空栏位

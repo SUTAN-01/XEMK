@@ -114,7 +114,7 @@ public:
         return race;
     }
 
-    std::unordered_multimap<std::string,int> getcost() const{
+    const std::unordered_multimap<std::string,int> &getcost() {
         return cost;
     }
 
