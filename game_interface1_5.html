@@ -1,0 +1,1700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XEMK</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+        .game-container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .player-section { border: 2px solid #333; padding: 15px; margin: 10px 0; border-radius: 8px; }
+        .cards-grid { display: flex; flex-wrap: wrap; gap: 15px; margin: 10px 0; }
+        .card { 
+            width: 180px; 
+            display: flex; flex-direction: column;
+            border: 2px solid #007bff; border-radius: 8px;
+            cursor: grab; background: white; transition: all 0.2s;
+            user-select: none; overflow: hidden;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+        .card.selected { border-color: #28a745; box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.3); }
+        .card.used { 
+            opacity: 0.5; 
+            cursor: not-allowed;
+            filter: grayscale(80%);
+            background: linear-gradient(135deg, #f5f5f5, #e0e0e0);
+        }
+        .card.dragging {
+            opacity: 0.7;
+            transform: scale(1.05);
+        }
+        
+        /* 卡牌内部样式 */
+        .card-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        
+        .card.used .card-header {
+            background: linear-gradient(135deg, #6c757d, #495057);
+        }
+        
+        .card-body {
+            padding: 10px;
+            flex-grow: 1;
+        }
+        
+        .card-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .card-properties {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        
+        .property {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 4px;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+        
+        .property.race {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .property.type {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .card-cost {
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .cost-item {
+            display: inline-block;
+            margin-right: 5px;
+            color: #6c757d;
+        }
+        
+        .controls { margin: 15px 0; text-align: center; }
+        button { 
+            padding: 12px 24px; margin: 5px; cursor: pointer; 
+            background: #28a745; color: white; border: none; border-radius: 5px;
+            font-size: 16px; transition: background 0.2s;
+        }
+        button:hover { background: #218838; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        #gameLog { 
+            height: 200px; overflow-y: auto; border: 1px solid #ccc; 
+            padding: 10px; margin: 10px 0; background-color: #f8f9fa;
+            border-radius: 5px; font-family: monospace;
+        }
+        .status { padding: 10px; border-radius: 5px; margin: 10px 0; text-align: center; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .config-section { 
+            background: #fff3cd; 
+            border: 1px solid #ffeaa7; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        /* 连接设置左侧样式 */
+        .config-left {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        /* 状态信息右侧样式 */
+        .status-info-right {
+            background: white;
+            border: 2px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 200px;
+            margin-left: 20px;
+        }
+        
+        .status-item {
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .status-label {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .status-value {
+            font-weight: bold;
+            font-size: 16px;
+            color: #007bff;
+        }
+        
+        .status-value.hp {
+            color: #dc3545;
+        }
+        
+        .status-value.bonus {
+            color: #28a745;
+        }
+        
+        /* 新添加的：特殊操作按钮容器样式 */
+        .special-actions-container {
+            margin-top: 15px;
+            display: none; /* 默认隐藏，接收到指令后显示 */
+        }
+        
+        .special-actions-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .special-actions-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .special-action-box {
+            width: 180px;
+            height: 240px;
+            border: 3px dashed #007bff;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        .special-action-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+            border-color: #0056b3;
+            background-color: #f0f8ff;
+        }
+        
+        .special-action-box.option1 {
+            border-color: #ff6b6b;
+        }
+        
+        .special-action-box.option2 {
+            border-color: #4ecdc4;
+        }
+        
+        .special-action-box.option1:hover {
+            background-color: #fff0f0;
+        }
+        
+        .special-action-box.option2:hover {
+            background-color: #f0fafa;
+        }
+        
+        .special-action-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .special-action-text {
+            font-weight: bold;
+            font-size: 18px;
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        .special-action-desc {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            padding: 0 10px;
+            margin-top: 8px;
+        }
+        
+        /* 当前回合使用的卡牌样式 */
+        .current-round-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .current-round-section h3 {
+            margin-top: 0;
+            color: #495057;
+            text-align: center;
+        }
+        
+        .slot-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
+        .slot-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+        }
+        
+        .slot-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 16px;
+            text-align: center;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .slot {
+            width: 80%;
+            min-height: 180px;
+            border: 3px dashed #adb5bd;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background: white;
+            transition: all 0.2s;
+            position: relative;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .slot.highlight {
+            border-color: #28a745;
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .slot-card {
+            width: 170px;
+            margin-bottom: 10px;
+        }
+        
+        .slot-empty {
+            color: #adb5bd;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        
+        .clear-slot-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            width: 24px;
+            height: 24px;
+            background: #ffc107;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 22px;
+            text-align: center;
+            display: none;
+            z-index: 5;
+        }
+        
+        .clear-slot-btn:hover {
+            background: #e0a800 !important;
+        }
+        
+        .clear-single-card-btn:hover {
+            background: #c82333 !important;
+        }
+        
+        .slot:hover .clear-slot-btn {
+            display: block;
+        }
+        
+        /* 对方当前回合样式 */
+        .opponent-current-round-section {
+            margin-top: 30px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 8px;
+            border: 2px solid #ced4da;
+        }
+        
+        .opponent-current-round-section h3 {
+            margin-top: 0;
+            color: #495057;
+            text-align: center;
+        }
+        
+        .opponent-slot-container {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 15px;
+        }
+        
+        .opponent-slot-column {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+        }
+        
+        .opponent-slot-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+            font-size: 16px;
+            text-align: center;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .opponent-slot {
+            width: 80%;
+            min-height: 180px;
+            border: 3px solid #6c757d;
+            border-radius: 8px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background: #f8f9fa;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        
+        .opponent-slot-card {
+            width: 170px;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .opponent-slot-empty {
+            color: #adb5bd;
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+        }
+        
+        /* 卡牌详细信息弹窗 */
+        .card-detail-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .card-detail-content {
+            background: white;
+            border-radius: 10px;
+            width: 400px;
+            max-width: 90%;
+            max-height: 80%;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .card-detail-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        
+        .card-detail-body {
+            padding: 20px;
+        }
+        
+        .detail-row {
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .detail-label {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-size: 16px;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 style="text-align: center; color: #333;">🃏 XEMK</h1>
+        
+        <div class="config-section">
+            <div class="config-left">
+                <h3>⚙️ 连接设置</h3>
+                <label for="serverIP">游戏服务器IP地址:</label>
+                <input type="text" id="serverIP" value="10.2.3.31" style="padding: 5px; margin: 0 10px;">
+                <button onclick="updateServerIP()">更新连接</button>
+                <p><small>提示: 在ROS 2主机上运行 <code>hostname -I</code> 查看IP地址</small></p>
+                
+                <!-- 新增的特殊操作按钮区域 -->
+                <div class="special-actions-container" id="specialActionsContainer">
+                    <div class="special-actions-title">⚡ 特殊操作</div>
+                    <div class="special-actions-buttons">
+                        <div class="special-action-box option1" onclick="sendSpecialAction('squirrels')">
+                            <div class="special-action-icon">🔵</div>
+                            <div class="special-action-text">松鼠</div>
+                            <div class="special-action-desc">选择松鼠牌</div>
+                        </div>
+                        <div class="special-action-box option2" onclick="sendSpecialAction('creations')">
+                            <div class="special-action-icon">🔴</div>
+                            <div class="special-action-text">造物</div>
+                            <div class="special-action-desc">选择造物牌</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 新增：状态信息区域 -->
+            <div class="status-info-right">
+                <div class="status-item">
+                    <span class="status-label">玩家受伤(先手-，后手+):</span>
+                    <span class="status-value hp" id="playerHPDisplay">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">后手方🦴数量:</span>
+                    <span class="status-value bonus" id="bonusFirstDisplay">0</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">先手方🦴数量:</span>
+                    <span class="status-value bonus" id="bonusSecondDisplay">0</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="connectionStatus" class="status info">准备连接...</div>
+        
+        <div class="player-section">
+            <h2>🃏 Your Cards</h2>
+            <div id="cardsGrid" class="cards-grid">No cards yet. Join the game first.</div>
+            
+            <!-- 当前回合使用的卡牌（可放置区域） -->
+            <div class="current-round-section">
+                <h3>当前回合要使用的卡牌</h3>
+                <div class="slot-container">
+                    <div class="slot-column">
+                        <div class="slot-title">栏位 1</div>
+                        <div class="slot" data-slot-index="0" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)" onclick="handleSlotClick(0)">
+                            <div class="slot-empty">拖放或点击卡牌到这里</div>
+                        </div>
+                    </div>
+                    <div class="slot-column">
+                        <div class="slot-title">栏位 2</div>
+                        <div class="slot" data-slot-index="1" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)" onclick="handleSlotClick(1)">
+                            <div class="slot-empty">拖放或点击卡牌到这里</div>
+                        </div>
+                    </div>
+                    <div class="slot-column">
+                        <div class="slot-title">栏位 3</div>
+                        <div class="slot" data-slot-index="2" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)" onclick="handleSlotClick(2)">
+                            <div class="slot-empty">拖放或点击卡牌到这里</div>
+                        </div>
+                    </div>
+                    <div class="slot-column">
+                        <div class="slot-title">栏位 4</div>
+                        <div class="slot" data-slot-index="3" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="handleDragLeave(event)" onclick="handleSlotClick(3)">
+                            <div class="slot-empty">拖放或点击卡牌到这里</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 对方当前回合使用的卡牌 -->
+            <div class="opponent-current-round-section">
+                <h3>对方当前回合使用的卡牌</h3>
+                <div class="opponent-slot-container">
+                    <div class="opponent-slot-column">
+                        <div class="opponent-slot-title">栏位 1</div>
+                        <div class="opponent-slot" data-opponent-slot-index="0">
+                            <div class="opponent-slot-empty">等待对方出牌</div>
+                        </div>
+                    </div>
+                    <div class="opponent-slot-column">
+                        <div class="opponent-slot-title">栏位 2</div>
+                        <div class="opponent-slot" data-opponent-slot-index="1">
+                            <div class="opponent-slot-empty">等待对方出牌</div>
+                        </div>
+                    </div>
+                    <div class="opponent-slot-column">
+                        <div class="opponent-slot-title">栏位 3</div>
+                        <div class="opponent-slot" data-opponent-slot-index="2">
+                            <div class="opponent-slot-empty">等待对方出牌</div>
+                        </div>
+                    </div>
+                    <div class="opponent-slot-column">
+                        <div class="opponent-slot-title">栏位 4</div>
+                        <div class="opponent-slot" data-opponent-slot-index="3">
+                            <div class="opponent-slot-empty">等待对方出牌</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button id="joinButton" onclick="joinGame()">加入游戏</button>
+                <button id="endButton" onclick="ReGame()">重新开始</button>
+                <button id="playButton" onclick="playCurrentRoundCards()" disabled>结束己方回合</button>
+                <!-- <button id="skipButton" onclick="skip()" disabled>跳过</button> -->
+            </div>
+        </div>
+        
+        <div class="player-section">
+            <h2>📝 游戏日志</h2>
+            <div id="gameLog">游戏日志将在这里显示...</div>
+        </div>
+    </div>
+
+    <!-- 卡牌详细信息弹窗 -->
+    <div class="card-detail-modal" id="cardDetailModal">
+        <div class="card-detail-content">
+            <div class="card-detail-header">
+                <span id="detailCardName">卡牌名称</span>
+                <button class="close-modal" onclick="closeCardDetail()">×</button>
+            </div>
+            <div class="card-detail-body">
+                <div class="detail-row">
+                    <div class="detail-label">生命值 (HP)</div>
+                    <div class="detail-value" id="detailCardHP">0</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">攻击力 (ATK)</div>
+                    <div class="detail-value" id="detailCardATK">0</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">属性</div>
+                    <div class="detail-value" id="detailCardProperty">无</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">种族</div>
+                    <div class="detail-value" id="detailCardRace">无</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">费用</div>
+                    <div class="detail-value" id="detailCardCost">无</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class GameClient {
+            constructor() {
+                this.ws = null;
+                this.playerId = null;
+                this.cards = []; // 存储卡牌对象数组
+                this.connected = false;
+                this.serverIP = '10.2.3.31';
+                this.isConnected = false;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                this.round = 0;
+                this.currentRound = 0;
+                this.skip = '';
+                this.playerHP = 0;
+                this.bonus = [0, 0];
+                
+                // 当前回合的四个栏位数据
+                this.currentRoundSlots = [[], [], [], []];
+                // 对方当前回合的四个栏位数据
+                this.opponentCurrentRoundSlots = [[], [], [], []];
+                // 最近点击的卡牌（用于点击放置）
+                this.lastClickedCard = null;
+                // 卡牌使用状态映射
+                this.cardUsageMap = new Map(); // 格式: uniqueId -> {card: object, used: boolean, slotIndex: number}
+                // 用于同步对方显示的临时数据
+                this.pendingOpponentCards = [[], [], [], []];
+                
+                // 从URL获取玩家ID
+                const urlParams = new URLSearchParams(window.location.search);
+                this.playerId = urlParams.get('player') || 'player1';
+                
+                // 设置IP输入框的默认值
+                document.getElementById('serverIP').value = this.getDefaultIP();
+                
+                // 初始化状态显示
+                this.updateStatusDisplay();
+                
+                this.connect();
+                this.initDragAndDrop();
+            }
+            
+            getDefaultIP() {
+                return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+                    ? 'localhost' 
+                    : '10.2.3.31';
+            }
+            
+            initDragAndDrop() {
+                // 卡牌拖动事件
+                document.addEventListener('dragstart', (e) => {
+                    if (e.target.classList.contains('card') && !e.target.classList.contains('used')) {
+                        const cardIndex = parseInt(e.target.dataset.index);
+                        const uniqueId = e.target.dataset.uniqueId;
+                        const usage = this.cardUsageMap.get(uniqueId);
+                        const card = usage ? usage.card : this.cards[cardIndex];
+                        
+                        e.dataTransfer.setData('application/json', JSON.stringify({
+                            card: card,
+                            index: cardIndex,
+                            uniqueId: uniqueId
+                        }));
+                        e.target.classList.add('dragging');
+                    }
+                });
+                
+                document.addEventListener('dragend', (e) => {
+                    if (e.target.classList.contains('card')) {
+                        e.target.classList.remove('dragging');
+                    }
+                });
+            }
+            
+            connect() {
+                if (this.ws) {
+                    this.ws.close();
+                }
+                
+                this.serverIP = document.getElementById('serverIP').value || this.getDefaultIP();
+                const wsUrl = `ws://${this.serverIP}:8002`;
+                
+                try {
+                    this.updateStatus(`🔗 正在连接到 ${this.serverIP}:8002`, 'info');
+                    console.log('Connecting to:', wsUrl);
+                    
+                    this.ws = new WebSocket(wsUrl);
+                    
+                    this.ws.onopen = () => {
+                        console.log('Connected to game server');
+                        this.isConnected = true;
+                        this.connected = true;
+                        this.reconnectAttempts = 0;
+                        this.updateStatus('✅ 已连接到游戏服务器', 'success');
+                        this.addToLog('已连接到游戏服务器 ' + this.serverIP);
+                    };
+
+                    this.ws.onclose = (event) => {
+                        console.log('WebSocket closed:', event);
+                        this.isConnected = false;
+                        this.connected = false;
+                        
+                        if (!event.wasClean) {
+                            this.handleReconnect();
+                        }
+                    };
+
+                    this.ws.onerror = (error) => {
+                        console.error('WebSocket error:', error);
+                        this.updateStatus('❌ 连接错误', 'error');
+                    };
+                    
+                    this.ws.onmessage = (event) => {
+                        try {
+                            console.log('Raw message received:', event.data);
+                            const data = JSON.parse(event.data);
+                            this.handleMessage(data);
+                        } catch (e) {
+                            console.error('Error parsing message:', e);
+                            this.addToLog('解析服务器消息时出错: ' + e.message);
+                        }
+                    };
+                } catch (error) {
+                    console.error('Connection error:', error);
+                    this.updateStatus('❌ 创建连接失败', 'error');
+                    this.handleReconnect();
+                }
+            }
+            
+            handleMessage(data) {
+                console.log('Parsed message:', data);
+                
+                switch(data.type) {
+                    case 'player_hp':
+                        this.playerHP = data.message;
+                        this.updateStatusDisplay();
+                        break;
+                        
+                    case 'player_bonus':
+                        this.bonus = data.message;
+                        this.updateStatusDisplay();
+                        break;
+                    
+                    case 'game_end':
+                        this.addToLog(`游戏结束 ${data.message}`);
+
+                    case 'numbers_assigned':
+                        // 服务器返回的是卡牌数组
+                        this.cards = data.cards || [];
+                        // this.cards_ip = data.cards_ip || [];
+                        // 重置卡牌使用状态
+                        this.cardUsageMap.clear();
+                        this.renderCards();
+                        this.updateCurrentRoundDisplay();
+                        this.updateOpponentCurrentRoundDisplay();
+                        this.updateStatus('✅ 卡牌分配完成! 游戏准备就绪', 'success');
+                        
+                        // 显示卡牌名称
+                        const cardNames = this.cards.map(card => card.name).join(', ');
+                        this.addToLog(`你获得了 ${this.cards.length} 张卡牌: ${cardNames}`);
+                        
+                        if (this.round % 2 === 0) {
+                            this.currentRound = this.round / 2;
+                            this.addToLog(`回合 ${this.currentRound}`);
+                        }
+                        this.round += 1;
+                        break;
+                        
+                    case 'game_start':
+                        this.addToLog('🎮 游戏开始! 双方玩家已就位');
+                        this.addToLog(`上次出牌: ${data.last_player}`);
+                        this.cardUsageMap.clear();
+                        this.currentRoundSlots = [[], [], [], []];
+                        this.opponentCurrentRoundSlots = [[], [], [], []];
+                        this.pendingOpponentCards = [[], [], [], []];
+                        this.renderCards();
+                        this.updateCurrentRoundDisplay();
+                        this.updateOpponentCurrentRoundDisplay();
+                        break;
+                        
+                    case 'move_accepted'://通知自己场上卡牌的变动
+                        this.addToLog(`✅ ${data.message}`);
+                        
+                        // 调试信息
+                        console.log('move_accepted data:', data);
+                        this.addToLog(`收到服务器确认，卡牌数量: ${data.cards_played ? data.cards_played.length : 0}`);
+                        
+                        if (data.cards_played && Array.isArray(data.cards_played)) {
+                            // 调试：查看cards_played的实际内容
+                            // for(let i = 0; i < 4; i++) {
+                            //     const item = data.cards_played[i];
+                            //     if (item!== null) {
+                            //         this.addToLog(`cards_played[${i}]: ${item.name} (id: ${item.id || item.card_id})`);
+                            //     } else {
+                            //         this.addToLog(`cards_played[${i}]: null`);
+                            //     }
+                            // }
+                            
+                            // 清空当前回合所有栏位
+                            this.currentRoundSlots = [[], [], [], []];
+                            
+                            // 根据服务器数据结构解析：扁平数组，按栏位顺序排列
+                            // 假设：每个栏位可能有多个卡牌，但服务器只返回实际存在的卡牌
+                            // 我们需要重新组织这些卡牌到4个栏位
+                            
+                            // 方法1：假设每4个元素对应一个栏位
+                            const cardsPerSlot = Math.ceil(data.cards_played.length / 4);
+                            for (let slotIndex = 0; slotIndex < 4; slotIndex++) {
+                                const startIndex = slotIndex * cardsPerSlot;
+                                const endIndex = startIndex + cardsPerSlot;
+                                
+                                for (let i = startIndex; i < endIndex && i < data.cards_played.length; i++) {
+                                    const cardData = data.cards_played[i];
+                                    if (cardData !== null) {
+                                        this.currentRoundSlots[slotIndex].push(cardData);
+                                    }
+                                }
+                            }
+                            
+                            // 重置卡牌使用状态
+                            for (const usage of this.cardUsageMap.values()) {
+                                usage.used = false;
+                                usage.slotIndex = -1;
+                            }
+                            
+                            this.renderCards();
+                            this.updateCurrentRoundDisplay();
+                            // this.addToLog(`服务器确认，栏位已更新`);
+                        }
+                        break;
+                                            
+                    case 'opponent_move':
+                        // 处理对方打出的卡牌
+                        if (data.cards_played && data.cards_played.length > 0) {
+                            // 获取卡牌名称列表（跳过null值）
+                            const validCards = data.cards_played.filter(card => card !== null);
+                            const cardNames = validCards.map(card => card.name).join(', ');
+                            
+                            // 更新日志
+                            this.addToLog(`对方打出卡牌: ${cardNames}`);
+                            
+                            // 清空对方栏位
+                            this.opponentCurrentRoundSlots = [[], [], [], []];
+                            
+                            // 解析扁平化的卡牌数组到4个栏位
+                            // 由于服务器没有明确的分隔符，我们需要根据原始布局猜测
+                            // 或者假设每个栏位最多X张卡牌
+                            
+                            // 方法1：如果知道每个栏位的卡牌数量
+                            let currentSlotIndex = 0;
+                            let cardsInCurrentSlot = 0;
+                            
+                            data.cards_played.forEach((cardData, index) => {
+                                if (cardData === null) {
+                                    // null表示卡牌无效，但我们不知道是否是栏位分隔符
+                                    // 可能只是表示某个栏位没有卡牌
+                                    // 这里我们保守处理：不切换栏位
+                                    return;
+                                }
+                                
+                                // 添加到当前栏位
+                                if (currentSlotIndex < 4) {
+                                    this.opponentCurrentRoundSlots[currentSlotIndex].push(cardData);
+                                    cardsInCurrentSlot++;
+                                    
+                                    // 假设每个栏位最多放置2张卡牌（根据游戏规则调整）
+                                    if (cardsInCurrentSlot >= 2) {
+                                        currentSlotIndex++;
+                                        cardsInCurrentSlot = 0;
+                                    }
+                                }
+                            });
+                            
+                            // 方法2：如果有明确的栏位分配信息
+                            if (data.slots && Array.isArray(data.slots)) {
+                                // this.addToLog(`使用明确的栏位分配信息`);
+                                for (let i = 0; i < Math.min(data.slots.length, 4); i++) {
+                                    this.opponentCurrentRoundSlots[i] = data.slots[i] || [];
+                                }
+                            }
+                            
+                            // 更新UI显示
+                            this.updateOpponentCurrentRoundDisplay();
+                        }
+                        break;
+                        
+                    case 'opponent_disconnected':
+                        this.addToLog(`⚠️ ${data.message}`);
+                        break;
+                        
+                    case 'opponent_reconnected':
+                        this.addToLog(`🔗 ${data.message}`);
+                        break;
+                        
+                    case 'waiting_for_opponent':
+                        this.addToLog(`⏳ ${data.message}`);
+                        break;
+                        
+                    case 'special_action_request': // 新增：接收到特殊操作指令
+                        this.showSpecialActions(data.instruction || '请选择操作');
+                        break;
+                }
+            }
+            
+            // 新增：更新状态显示
+            updateStatusDisplay() {
+                // 更新玩家HP显示
+                document.getElementById('playerHPDisplay').textContent = this.playerHP;
+                
+                // 更新Bonus显示
+                if (this.bonus && this.bonus.length >= 2) {
+                    document.getElementById('bonusFirstDisplay').textContent = this.bonus[0];
+                    document.getElementById('bonusSecondDisplay').textContent = this.bonus[1];
+                    // this.addToLog(`⏳ this.bonus.length >= 2==========`);
+                } else {
+                    document.getElementById('bonusFirstDisplay').textContent = '0';
+                    document.getElementById('bonusSecondDisplay').textContent = '0';
+                    // this.addToLog(`⏳ ${this.bonus.length}==========`);
+                }
+            }
+            
+            // 新增：显示特殊操作按钮
+            showSpecialActions(instruction) {
+                const container = document.getElementById('specialActionsContainer');
+                if (container) {
+                    // 更新标题
+                    const titleElement = container.querySelector('.special-actions-title');
+                    if (titleElement) {
+                        titleElement.textContent = `⚡ ${instruction}`;
+                    }
+                    
+                    // 显示容器
+                    container.style.display = 'block';
+                    this.addToLog(`收到特殊操作指令: ${instruction}`);
+                }
+            }
+            
+            // 新增：隐藏特殊操作按钮
+            hideSpecialActions() {
+                const container = document.getElementById('specialActionsContainer');
+                if (container) {
+                    container.style.display = 'none';
+                }
+            }
+            
+            // 新增：发送特殊操作消息
+            sendSpecialAction(actionType) {
+                if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+                    const actionMsg = {
+                        type: 'special_action',
+                        player_id: this.playerId,
+                        action_type: actionType
+                    };
+                    
+                    this.sendMessage(actionMsg);
+                    this.addToLog(`发送特殊操作: ${actionType}`);
+                    
+                    // 发送后隐藏按钮区域
+                    this.hideSpecialActions();
+                } else {
+                    this.addToLog('无法发送特殊操作: WebSocket 未连接');
+                }
+            }
+            
+            // 修改后的：更新对方卡牌位置
+            updateOpponentCard(slotIndex, cardData, action) {
+                if (slotIndex < 0 || slotIndex > 3) return;
+                
+                if (action === 'add') {
+                    // 添加卡牌到对方对应栏位
+                    this.opponentCurrentRoundSlots[slotIndex].push(cardData);
+                } else if (action === 'remove') {
+                    // 从对方对应栏位移除卡牌
+                    const cardIndex = this.opponentCurrentRoundSlots[slotIndex].findIndex(
+                        card => card.name === cardData.name && 
+                        card.HP === cardData.HP && 
+                        card.ATK === cardData.ATK
+                    );
+                    if (cardIndex !== -1) {
+                        this.opponentCurrentRoundSlots[slotIndex].splice(cardIndex, 1);
+                    }
+                } else if (action === 'clear') {
+                    // 清空对方整个栏位
+                    this.opponentCurrentRoundSlots[slotIndex] = [];
+                }
+                
+                this.updateOpponentCurrentRoundDisplay();
+            }
+            
+            sendCardPlacementUpdate(slotIndex, cardData, action) {
+                if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+                    const updateMsg = {
+                        type: 'card_placement_update',
+                        player_id: this.playerId,
+                        slot_index: slotIndex,
+                        card: cardData,
+                        action: action // 'add', 'remove', 'clear'
+                    };
+                    
+                    this.sendMessage(updateMsg);
+                }
+            }
+            
+            joinGame() {
+                if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+                    const joinMsg = {
+                        type: 'player_join',
+                        player_id: this.playerId
+                    };
+                    console.log('Sending join message:', joinMsg);
+                    this.sendMessage(joinMsg);
+                    this.addToLog(`以 ${this.playerId} 身份加入游戏...`);
+                    document.getElementById('joinButton').disabled = true;
+                } else {
+                    this.updateStatus('❌ 未连接到服务器', 'error');
+                    this.addToLog('无法加入: WebSocket 未连接');
+                }
+            }
+
+            ReGame() {
+                if (this.connected && this.ws.readyState === WebSocket.OPEN) {
+                    const joinMsg = {
+                        type: 'start_new_round',
+                        player_id: this.playerId
+                    };
+                    console.log('Sending ReGame message:', joinMsg);
+                    this.sendMessage(joinMsg);
+                    this.addToLog(`请求新的游戏回合...`);
+                } else {
+                    this.updateStatus('❌ 未连接到服务器', 'error');
+                    this.addToLog('无法请求新回合: WebSocket 未连接');
+                }
+            }
+            
+            sendMessage(message) {
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(JSON.stringify(message));
+                    console.log('Message sent:', message);
+                } else {
+                    console.error('Cannot send message: WebSocket not open');
+                    this.addToLog('错误: 无法发送消息 - 连接已关闭');
+                }
+            }
+            
+            showCardDetail(card) {
+                document.getElementById('detailCardName').textContent = card.name;
+                document.getElementById('detailCardHP').textContent = card.HP || 0;
+                document.getElementById('detailCardATK').textContent = card.ATK || 0;
+                document.getElementById('detailCardProperty').textContent = card.property || "无";
+                document.getElementById('detailCardRace').textContent = card.race || "无";
+                
+                // 处理费用显示
+                let costText = "无";
+                if (card.cost && Array.isArray(card.cost)) {
+                    costText = card.cost.map(item => `${item.resource}: ${item.amount}`).join(', ');
+                } else if (card.cost && typeof card.cost === 'object') {
+                    costText = Object.entries(card.cost).map(([resource, amount]) => `${resource}: ${amount}`).join(', ');
+                }
+                document.getElementById('detailCardCost').textContent = costText;
+                
+                document.getElementById('cardDetailModal').style.display = 'flex';
+            }
+            
+            renderCards() {
+                const grid = document.getElementById('cardsGrid');
+                grid.innerHTML = '';
+                
+                if (this.cards.length === 0) {
+                    grid.innerHTML = '<div style="text-align: center; width: 100%; color: #666; padding: 20px;">暂无卡牌</div>';
+                    return;
+                }
+                
+                // 显示所有卡牌，包括已使用的
+                this.cards.forEach((card, index) => {
+                    const uniqueId = `${card.name}_${index}`;
+                    // this.addToLog(`uniqueId===: ${uniqueId}`);
+                  
+                    // 初始化卡牌使用状态
+                    if (!this.cardUsageMap.has(uniqueId)) {
+                        this.cardUsageMap.set(uniqueId, {
+                            card: card,
+                            used: false,
+                            slotIndex: -1
+                        });
+                    }
+                    
+                    const cardElement = this.createCardElement(card, index);
+                    grid.appendChild(cardElement);
+                });
+
+                // 循环结束后打印完整Map
+                // this.addToLog('=== 完整卡片使用状态 ===');
+                // this.cardUsageMap.forEach((value, key) => {
+                //     this.addToLog(`卡片ID: ${key}, 使用状态: ${value.used}, 卡槽: ${value.slotIndex}, 卡片名: ${value.card.name}`);
+                // });
+                
+            }
+            
+            createCardElement(card, index, isSlotCard = false) {
+                const uniqueId = `${card.name}_${index}`;
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.dataset.index = index;
+                cardDiv.dataset.uniqueId = uniqueId;
+                
+                // 只有在"your cards"中且未被使用时才可拖动
+                if (!isSlotCard) {
+                    const usage = this.cardUsageMap.get(uniqueId);
+                    cardDiv.draggable = !(usage && usage.used);
+                    
+                    // 如果卡牌已被使用（在栏位中），添加used类使其变灰
+                    if (usage && usage.used) {
+                        cardDiv.classList.add('used');
+                    }
+                } else {
+                    // 栏位中的卡牌不可拖动，但保持正常显示
+                    cardDiv.draggable = false;
+                    // 栏位卡牌添加特定类
+                    cardDiv.classList.add('slot-card-instance');
+                }
+                
+                // 创建卡牌内容
+                const cardHeader = document.createElement('div');
+                cardHeader.className = 'card-header';
+                cardHeader.textContent = card.name;
+                
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body';
+                
+                // 卡牌统计数据
+                const statsDiv = document.createElement('div');
+                statsDiv.className = 'card-stats';
+                
+                const hpStat = document.createElement('div');
+                hpStat.className = 'stat';
+                hpStat.innerHTML = `<div class="stat-value">${card.HP || 0}</div><div class="stat-label">HP</div>`;
+                
+                const atkStat = document.createElement('div');
+                atkStat.className = 'stat';
+                atkStat.innerHTML = `<div class="stat-value">${card.ATK || 0}</div><div class="stat-label">ATK</div>`;
+                
+                statsDiv.appendChild(hpStat);
+                statsDiv.appendChild(atkStat);
+                
+                // 卡牌属性
+                const propertiesDiv = document.createElement('div');
+                propertiesDiv.className = 'card-properties';
+                
+                if (card.race) {
+                    const raceSpan = document.createElement('span');
+                    raceSpan.className = 'property race';
+                    raceSpan.textContent = card.race;
+                    propertiesDiv.appendChild(raceSpan);
+                }
+                
+                if (card.property) {
+                    const typeSpan = document.createElement('span');
+                    typeSpan.className = 'property type';
+                    typeSpan.textContent = card.property;
+                    propertiesDiv.appendChild(typeSpan);
+                }
+                
+                // 卡牌费用
+                const costDiv = document.createElement('div');
+                costDiv.className = 'card-cost';
+                
+                if (card.cost) {
+                    let costText = "";
+                    if (Array.isArray(card.cost)) {
+                        costText = card.cost.map(item => `${item.resource}: ${item.amount}`).join(', ');
+                    } else if (typeof card.cost === 'object') {
+                        costText = Object.entries(card.cost).map(([resource, amount]) => `${resource}: ${amount}`).join(', ');
+                    }
+                    if(!costText){
+                        costDiv.textContent = "费用: 无";
+                    } else {
+                        costDiv.textContent = `费用: ${costText}`;
+                    }
+                } else {
+                    costDiv.textContent = "费用: 无";
+                }
+                
+                // 组装卡牌
+                cardBody.appendChild(statsDiv);
+                cardBody.appendChild(propertiesDiv);
+                
+                cardDiv.appendChild(cardHeader);
+                cardDiv.appendChild(cardBody);
+                cardDiv.appendChild(costDiv);
+                
+                // 右键点击查看详情
+                cardDiv.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    this.showCardDetail(card);
+                    return false;
+                };
+                
+                return cardDiv;
+            }
+            
+            updateCurrentRoundDisplay() {
+                const slots = document.querySelectorAll('.slot');
+
+                slots.forEach((slot, index) => {
+                    const cards = this.currentRoundSlots[index];
+                    
+                    
+                    // 清除旧内容
+                    slot.innerHTML = '';
+                    
+                    // 添加新内容
+                    // if (cards.length === 0|| cards.length > 1) {
+                    //     const emptyDiv = document.createElement('div');
+                    //     emptyDiv.className = 'slot-empty';
+                    //     emptyDiv.textContent = '拖放卡牌到这里';
+                    //     slot.appendChild(emptyDiv);
+                    //     this.currentRoundSlots[index]=[];
+                    if (cards.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = 'slot-empty';
+                        emptyDiv.textContent = '拖放卡牌到这里';
+                        slot.appendChild(emptyDiv);
+                        // this.currentRoundSlots[index]=[];
+                    }  else {
+
+
+                        // 创建卡牌容器
+                        const cardsContainer = document.createElement('div');
+                        cardsContainer.style.width = '100%';
+
+                        // if(cards.length === 2&&cards[1].cost){
+                        //     this.addToLog('aaaaaaaaaaaaaaa');
+                            
+                        //     // this.addToLog(`Cards in slot=== ${cards[0].name}`);
+                        //     // if (cards[0].cost && Array.isArray(cards[0].cost)) {
+                        //     //     // 显示所有成本项
+                        //     //     cards[0].cost.forEach((costItem, index) => {
+                        //     //         this.addToLog(`成本[${index}]: ${costItem.amount} ${costItem.resource}`);
+                        //     //     });
+                              
+                        //     // } else {
+                        //     //     this.addToLog('成本数据格式错误或为空');
+                        //     // }
+                            
+                        //     this.addToLog('endddd');
+                        // }
+                        
+                        cards.forEach((card, cardIndex) => {
+                            const cardWrapper = document.createElement('div');
+                            cardWrapper.style.position = 'relative';
+                            cardWrapper.style.marginBottom = '10px';
+                            
+                            // 创建完整卡牌元素（和Your Cards中的一样）
+                            const cardElement = this.createCardElement(card, cardIndex);
+                            cardElement.classList.add('slot-card');
+                            cardElement.style.width = '170px';
+                            cardElement.style.margin = '0 auto';
+                            
+                            cardWrapper.appendChild(cardElement);
+                            cardsContainer.appendChild(cardWrapper);
+                        });
+                        
+                        slot.appendChild(cardsContainer);
+                    }
+                    
+                    // 添加整个栏位的清除按钮
+                    const clearAllBtn = document.createElement('button');
+                    clearAllBtn.className = 'clear-slot-btn';
+                    clearAllBtn.innerHTML = '×';
+                    clearAllBtn.title = '清空整个栏位';
+                    
+                    clearAllBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        this.removeCardFromSlot(index);
+                    });
+                    
+                    slot.appendChild(clearAllBtn);
+                    
+                    // 鼠标悬停在栏位时显示清除按钮
+                    slot.addEventListener('mouseenter', () => {
+                        if (cards.length > 0) {
+                            clearAllBtn.style.display = 'block';
+                        }
+                    });
+                    
+                    slot.addEventListener('mouseleave', () => {
+                        clearAllBtn.style.display = 'none';
+                    });
+                });
+               
+                document.getElementById('playButton').disabled = false;
+            }
+            
+            updateOpponentCurrentRoundDisplay() {
+                const slots = document.querySelectorAll('.opponent-slot');
+                slots.forEach((slot, index) => {
+                    const cards = this.opponentCurrentRoundSlots[index];
+                    
+                    // 清除旧内容
+                    slot.innerHTML = '';
+                    
+                    // 添加新内容
+                    if (cards.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = 'opponent-slot-empty';
+                        emptyDiv.textContent = '等待对方出牌';
+                        slot.appendChild(emptyDiv);
+                    } else {
+                        // 创建卡牌容器
+                        const cardsContainer = document.createElement('div');
+                        cardsContainer.style.width = '100%';
+                        
+                        cards.forEach((card, cardIndex) => {
+                            const cardWrapper = document.createElement('div');
+                            cardWrapper.style.position = 'relative';
+                            cardWrapper.style.marginBottom = '10px';
+                            
+                            // 创建完整卡牌元素
+                            const cardElement = this.createCardElement(card, cardIndex);
+                            cardElement.classList.add('opponent-slot-card');
+                            cardElement.style.width = '170px';
+                            cardElement.style.margin = '0 auto';
+                            cardElement.style.opacity = '0.9';
+                            
+                            cardWrapper.appendChild(cardElement);
+                            cardsContainer.appendChild(cardWrapper);
+                        });
+                        
+                        slot.appendChild(cardsContainer);
+                    }
+                });
+            }
+            
+            addCardToSlot(slotIndex, cardData) {
+                const uniqueId = cardData.uniqueId;
+                
+                // 检查卡牌是否已被使用
+                if (!this.cardUsageMap.has(uniqueId)) {
+                    return false;
+                }
+                
+                const usage = this.cardUsageMap.get(uniqueId);
+                if (usage.used && usage.slotIndex !== slotIndex) {
+                    // 卡牌已被其他栏位使用，先从中移除
+                    this.removeCardFromSlot(usage.slotIndex, uniqueId);
+                }
+                
+                // 如果已经在同一个栏位，不需要重复添加
+                if (usage.used && usage.slotIndex === slotIndex) {
+                    return true;
+                }
+                
+                // 添加到指定栏位
+                const cardInSlot = {
+                    ...cardData.card,
+                    uniqueId: uniqueId,
+                    slotIndex: slotIndex
+                };
+                this.currentRoundSlots[slotIndex].push(cardInSlot);
+                
+                // 更新卡牌使用状态
+                usage.used = true;
+                usage.slotIndex = slotIndex;
+                
+                // 发送放置更新给对手
+                this.sendCardPlacementUpdate(slotIndex, cardData.card, 'add');
+                
+                this.updateCurrentRoundDisplay();
+                this.renderCards();
+                return true;
+            }
+            
+            removeCardFromSlot(slotIndex, specificUniqueId = null) {
+                if (this.currentRoundSlots[slotIndex].length === 0) return;
+                
+                if (specificUniqueId !== null) {
+                    // 移除特定卡牌
+                    const cardIndex = this.currentRoundSlots[slotIndex].findIndex(
+                        card => card.uniqueId === specificUniqueId
+                    );
+                    if (cardIndex !== -1) {
+                        const removedCard = this.currentRoundSlots[slotIndex][cardIndex];
+                        this.currentRoundSlots[slotIndex].splice(cardIndex, 1);
+                        
+                        // 更新卡牌使用状态
+                        if (this.cardUsageMap.has(removedCard.uniqueId)) {
+                            const usage = this.cardUsageMap.get(removedCard.uniqueId);
+                            usage.used = false;
+                            usage.slotIndex = -1;
+                        }
+                        
+                        // 发送移除更新给对手
+                        this.sendCardPlacementUpdate(slotIndex, removedCard, 'remove');
+                    }
+                } else {
+                    // 移除整个栏位的所有卡牌
+                    const removedCards = [...this.currentRoundSlots[slotIndex]];
+
+                    // 只发送第一个卡牌的ID（假设清空时只关心主要卡牌）
+                    const firstCard = this.currentRoundSlots[slotIndex][0];
+                    const cardData = firstCard ? {
+                        name: firstCard.name,
+                        HP: firstCard.HP,
+                        ATK: firstCard.ATK,
+                        property: firstCard.property,
+                        race: firstCard.race,
+                        cost: firstCard.cost,
+                        card_id: firstCard.card_id  // 改为 card_id 与接收端匹配
+                    } : null;
+
+                    
+                    this.currentRoundSlots[slotIndex] = [];
+                    
+                    // 更新所有卡牌的使用状态
+                    removedCards.forEach(card => {
+                        if (this.cardUsageMap.has(card.uniqueId)) {
+                            const usage = this.cardUsageMap.get(card.uniqueId);
+                            usage.used = false;
+                            usage.slotIndex = -1;
+                        }
+                    });
+
+                    
+
+                    // 发送移除更新给对手
+                    this.sendCardPlacementUpdate(slotIndex, cardData, 'clear');
+                }
+                
+                this.updateCurrentRoundDisplay();
+                this.renderCards();
+            }
+            
+            playCurrentRoundCards() {
+                if (!this.connected ) {
+                    this.addToLog('❌连接失败');
+                    return;
+                }
+                
+                // 收集所有栏位的卡牌
+                const allCards = [];
+                for (let i = 0; i < this.currentRoundSlots.length; i++) {
+                    const slotCards = this.currentRoundSlots[i].map(card => {
+                        return {
+                            name: card.name,
+                            HP: card.HP,
+                            ATK: card.ATK,
+                            property: card.property,
+                            race: card.race,
+                            cost: card.cost,
+                            id:card.card_id
+
+                        };
+                    });
+                    allCards.push(...slotCards);
+                }
+                
+                if (allCards.length === 0) {
+                    this.addToLog('已结束，没有出牌');
+                    document.getElementById('playButton').disabled = true;
+                }
+                
+                // 记录哪些卡牌被打出了（永久移除）
+                const playedUniqueIds = [];
+                for (let i = 0; i < this.currentRoundSlots.length; i++) {
+                    this.currentRoundSlots[i].forEach(card => {
+                        playedUniqueIds.push(card.uniqueId);
+                    });
+                }
+                
+                const playMsg = {
+                    type: 'player_action',
+                    player_id: this.playerId,
+                    cards: allCards.map(card => card.name),
+                    slots: this.currentRoundSlots.map(slot => 
+                        slot.map(card => ({
+                            name: card.name,
+                            HP: card.HP,
+                            ATK: card.ATK,
+                            property: card.property,
+                            race: card.race,
+                            id:card.card_id
+                        }))
+                    ),
+                    card_details: allCards
+                };
+                
+                console.log('Sending play message:', playMsg);
+                this.sendMessage(playMsg);
+                this.addToLog(`打出卡牌: ${allCards.map(c => c.name).join(', ')}`);
+                
+                // 从卡牌列表中永久移除打出的卡牌
+                this.cards = this.cards.filter((card, index) => {
+                    const uniqueId = `${card.name}_${index}`;
+                    return !playedUniqueIds.includes(uniqueId);
+                });
+                
+                // 清除卡牌使用状态
+                playedUniqueIds.forEach(uniqueId => {
+                    this.cardUsageMap.delete(uniqueId);
+                });
+                
+                // // 重置当前回合栏位
+                // this.lastClickedCard = null;
+                
+                this.updateCurrentRoundDisplay();
+                this.renderCards();
+            }
+            
+            updateStatus(message, type) {
+                const statusDiv = document.getElementById('connectionStatus');
+                statusDiv.textContent = message;
+                statusDiv.className = `status ${type}`;
+            }
+            
+            addToLog(message) {
+                const logDiv = document.getElementById('gameLog');
+                const timestamp = new Date().toLocaleTimeString();
+                logDiv.innerHTML += `[${timestamp}] ${message}<br>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+            }
+
+            handleReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    const delay = Math.min(1000 * this.reconnectAttempts, 10000);
+                    
+                    console.log(`Reconnecting in ${delay}ms... (attempt ${this.reconnectAttempts})`);
+                    this.updateStatus(`🔄 重新连接中... (尝试 ${this.reconnectAttempts}/${this.maxReconnectAttempts})`, 'info');
+                    
+                    setTimeout(() => {
+                        this.connect();
+                    }, delay);
+                } else {
+                    console.error('Max reconnection attempts reached');
+                    this.updateStatus('❌ 连接失败，请检查服务器状态和IP地址', 'error');
+                }
+            }
+        }
+        
+        let gameClient;
+        
+        // 全局拖放处理函数
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('highlight');
+        }
+        
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('highlight');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('highlight');
+            
+            try {
+                const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                const slotIndex = parseInt(e.currentTarget.dataset.slotIndex);
+                
+                if (gameClient && gameClient.addCardToSlot(slotIndex, data)) {
+                    // 成功添加
+                }
+            } catch (error) {
+                console.error('Drop error:', error);
+            }
+        }
+        
+        // function handleSlotClick(slotIndex) {
+        //     if (gameClient && gameClient.lastClickedCard) {
+        //         gameClient.addCardToSlot(slotIndex, gameClient.lastClickedCard);
+        //         gameClient.lastClickedCard = null;
+        //     }
+        // }
+        
+        function clearSlot(slotIndex, uniqueId = null, e = null) {
+            if (e) e.stopPropagation();
+            if (gameClient) {
+                if (uniqueId) {
+                    // 清除特定卡牌
+                    gameClient.removeCardFromSlot(slotIndex, uniqueId);
+                } else {
+                    // 清除整个栏位
+                    gameClient.removeCardFromSlot(slotIndex);
+                }
+            }
+        }
+        
+        // 新增：发送特殊操作的全局函数
+        function sendSpecialAction(actionType) {
+            if (gameClient) {
+                gameClient.sendSpecialAction(actionType);
+            }
+        }
+        
+        function playCurrentRoundCards() {
+            if (gameClient) {
+                gameClient.playCurrentRoundCards();
+            }
+        }
+        
+        function closeCardDetail() {
+            document.getElementById('cardDetailModal').style.display = 'none';
+        }
+        
+        // 点击模态框外部关闭
+        document.getElementById('cardDetailModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeCardDetail();
+            }
+        });
+        
+        window.onload = function() {
+            gameClient = new GameClient();
+        };
+        
+        function joinGame() {
+            if (gameClient) {
+                gameClient.joinGame();
+            }
+        }
+
+        function ReGame() {
+            if (gameClient) {
+                gameClient.ReGame();
+            }
+        }
+        
+        function updateServerIP() {
+            if (gameClient) {
+                gameClient.reconnectAttempts = 0;
+                gameClient.connect();
+            }
+        }
+    </script>
+</body>
+</html>
